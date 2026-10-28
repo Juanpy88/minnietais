@@ -269,8 +269,8 @@ const open=id=>{const o=$(id);o.classList.remove('out');o.classList.add('show');
 const closeAll=()=>document.querySelectorAll('.ov.show').forEach(o=>{o.classList.add('out');setTimeout(()=>{if(o.classList.contains('out'))o.classList.remove('show','out');if(!document.querySelector('.ov.show:not(.out)')&&$('#pd').hidden)document.body.classList.remove('noscroll')},200)});
 document.addEventListener('click',e=>{if(e.target.matches('[data-close]')||e.target.classList.contains('ov'))closeAll()});
 
-$('#envio').textContent='🚚 Envíos a todo Chile con BlueExpress a solo '+clp(CFG.ENVIO);
-$('#envnote').textContent='🚚 Envío a todo Chile con BlueExpress: '+clp(CFG.ENVIO)+'. Se coordina por WhatsApp.';
+$('#envio').textContent='🚚 Envíos a todo Chile por BlueExpress a solo '+clp(CFG.ENVIO);
+$('#envnote').textContent='🚚 Envío a todo Chile por BlueExpress: '+clp(CFG.ENVIO)+'. Se coordina por WhatsApp.';
 
 /* ---- datos ---- */
 async function load(){let ok=true;if(demo)prods=J('p',[]);else{const{data,error}=await sb.from('productos').select('*').order('created_at',{ascending:false});prods=data||[];if(error)ok=false}prods.forEach(p=>{if(!SEC[p.seccion])p.seccion='inmediata';p.tallas=p.tallas||[];p.cats=p.categorias?.length?p.categorias:(p.categoria?[p.categoria]:['Otros']);p.subs=p.subcategorias?.length?p.subcategorias:(p.subcategoria?[p.subcategoria]:[])});if(ok)podar();render();if(ok&&!rutaHecha){rutaHecha=true;const hi=hashId();if(hi)abrirProd(hi,false)}}
@@ -378,7 +378,7 @@ function mostrarProd(p){
  <div class="pdi"><div class="pdcats">${p.cats.map(c=>`<span>${esc(c)}</span>`).join('')}</div>
  <h1>${esc(p.titulo)}</h1>
  <div class="pdp">${clp(p.precio)}${off?`<s>${clp(p.precio_antes)}</s><span class="pdoff">-${Math.round(100-p.precio*100/p.precio_antes)}%</span>`:''}</div>
- <p class="pdenv">🚚 Envío a todo Chile con BlueExpress: ${clp(CFG.ENVIO)}</p>
+ <p class="pdenv">🚚 Envío a todo Chile por BlueExpress: ${clp(CFG.ENVIO)}</p>
  ${(p.etiquetas||[]).length?`<div class="pdtg">${p.etiquetas.map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}
  ${p.descripcion?`<p class="pdd">${esc(p.descripcion)}</p>`:''}
  ${ts.length?`<div class="tlw"><small>Tallas disponibles${ts.some(t=>TCAL.includes(t))?' (EUR)':''}</small><div class="tl">${ts.map(t=>`<button class="${tsel[p.id]==t?'on':''}" data-tl="${esc(t)}" data-pid="${p.id}" aria-pressed="${tsel[p.id]==t}">${esc(t)}</button>`).join('')}</div></div>`:''}
