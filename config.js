@@ -5,5 +5,6 @@ window.MT_CONFIG={
   KEY:'sb_publishable_s8x0rj5HuZ24TNC1vqUjPg_mDh3nJdM',
   GCLIENT:'958221500892-m5i52ro5sf1d8sftf75ouc23lafekj2j.apps.googleusercontent.com',
   ADMIN:'minnietais.cl@gmail.com',
-  WA:'56995493037'
+  WA:'56995493037',
+  ENVIO:3640   // precio del envío por BlueExpress (si cambia, edita solo este número)
 };
