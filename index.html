@@ -182,6 +182,10 @@ a.ib{text-decoration:none}.igp{display:none}
 .envnote{font-size:14px;color:var(--suave);background:#fff;border:1px solid #fbd9e3;border-radius:12px;padding:8px 12px}
 .pdenv{font-size:14px;color:var(--suave);margin-top:6px}
 @media(max-width:600px){.envio{font-size:13px}}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kpi{background:#fff;border:1px solid #fbd9e3;border-radius:14px;padding:10px 12px}.kpi b{display:block;font-size:30px;line-height:1.1;color:var(--fuerte)}.kpi small{color:var(--suave);font-size:13px}
+.bars{display:flex;align-items:flex-end;gap:4px;height:110px;background:#fff;border:1px solid #fbd9e3;border-radius:14px;padding:10px 8px 4px}
+.bc{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}.bc i{width:100%;background:var(--rosa);border-radius:5px 5px 0 0;min-height:2px}.bc small{font-size:10px;color:var(--suave)}
+.stn{font-size:13px;color:var(--suave)}
 </style></head><body>
 <div class="envio" id="envio" role="note"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="ig" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></symbol></svg>
@@ -231,7 +235,7 @@ a.ib{text-decoration:none}.igp{display:none}
 <div class="lb" id="lb" hidden><button class="lbx" id="lbx" aria-label="Cerrar">×</button><button class="ar l" id="lbp" aria-label="Foto anterior">‹</button><div class="lbs" id="lbs"><img id="lbi" alt=""></div><button class="ar r" id="lbn" aria-label="Foto siguiente">›</button><div class="lbc" id="lbc"></div></div>
 <div class="ov" id="oFav"><div class="sheet"><h2>Mis favoritos</h2><div id="favl"></div>
 <button class="btn" id="bFavAdd">Agregar seleccionados al carrito</button><button class="btn sec" data-close>Seguir viendo</button></div></div>
-<div class="ov" id="oStats"><div class="sheet st"><h2>Estadísticas</h2><h3>Más agregados al carrito</h3><div id="stC"></div><h3>Con más me gusta</h3><div id="stL"></div><button class="btn sec" data-close>Cerrar</button></div></div>
+<div class="ov" id="oStats"><div class="sheet st"><h2>Estadísticas</h2><div id="stV"></div><h3>Productos más vistos</h3><div id="stP"></div><h3>Más agregados al carrito</h3><div id="stC"></div><h3>Con más me gusta</h3><div id="stL"></div><button class="btn sec" data-close>Cerrar</button></div></div>
 <div class="pd" id="pd" hidden role="dialog" aria-label="Producto">
 <div class="pdtop"><button class="ib" id="pdBack" aria-label="Volver">← Volver</button><div class="row"><button class="ib" id="pdCart" aria-label="Carrito"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg><b id="pdn">0</b></button></div></div>
 <div class="pdbody" id="pdbody"></div></div>
@@ -269,8 +273,8 @@ const open=id=>{const o=$(id);o.classList.remove('out');o.classList.add('show');
 const closeAll=()=>document.querySelectorAll('.ov.show').forEach(o=>{o.classList.add('out');setTimeout(()=>{if(o.classList.contains('out'))o.classList.remove('show','out');if(!document.querySelector('.ov.show:not(.out)')&&$('#pd').hidden)document.body.classList.remove('noscroll')},200)});
 document.addEventListener('click',e=>{if(e.target.matches('[data-close]')||e.target.classList.contains('ov'))closeAll()});
 
-$('#envio').textContent='🚚 Envíos a todo Chile por BlueExpress a solo '+clp(CFG.ENVIO);
-$('#envnote').textContent='🚚 Envío a todo Chile por BlueExpress: '+clp(CFG.ENVIO)+'. Se coordina por WhatsApp.';
+$('#envio').textContent='🚚 Envíos a todo Chile con BlueExpress a solo '+clp(CFG.ENVIO);
+$('#envnote').textContent='🚚 Envío a todo Chile con BlueExpress: '+clp(CFG.ENVIO)+'. Se coordina por WhatsApp.';
 
 /* ---- datos ---- */
 async function load(){let ok=true;if(demo)prods=J('p',[]);else{const{data,error}=await sb.from('productos').select('*').order('created_at',{ascending:false});prods=data||[];if(error)ok=false}prods.forEach(p=>{if(!SEC[p.seccion])p.seccion='inmediata';p.tallas=p.tallas||[];p.cats=p.categorias?.length?p.categorias:(p.categoria?[p.categoria]:['Otros']);p.subs=p.subcategorias?.length?p.subcategorias:(p.subcategoria?[p.subcategoria]:[])});if(ok)podar();render();if(ok&&!rutaHecha){rutaHecha=true;const hi=hashId();if(hi)abrirProd(hi,false)}}
@@ -333,8 +337,15 @@ $('#grid').onclick=async e=>{const t=e.target,g=k=>t.dataset[k];
  if(g('del')&&confirm('¿Borrar este producto?')){await borrar(g('del'));toast('Producto borrado');load()}};
 
 /* ---- favoritos, eventos y estadísticas ---- */
-function evento(tipo,id){if(demo){const a=J('ev',[]);a.push({tipo,producto_id:id});localStorage.ev=JSON.stringify(a.slice(-3000));return}
- sb.from('eventos').insert({tipo,producto_id:id,user_id:user?.id||null}).then(()=>{})}
+const vid=()=>{try{return localStorage.mt_vid||(localStorage.mt_vid=crypto.randomUUID())}catch(e){return null}};
+function evento(tipo,id){const v=(tipo=='visita'||tipo=='vista')?vid():null;
+ if(demo){const a=J('ev',[]);a.push({tipo,producto_id:id,visitante:v,t:Date.now()});localStorage.ev=JSON.stringify(a.slice(-3000));return}
+ const row={tipo,producto_id:id,user_id:user?.id||null};if(v)row.visitante=v;sb.from('eventos').insert(row).then(()=>{})}
+function visitar(){try{if(sessionStorage.mt_v||localStorage.mt_noc)return;sessionStorage.mt_v=1}catch(e){return}evento('visita',0)}
+function statsLocal(ev){const f=a=>({visitas:a.length,unicos:new Set(a.map(e=>e.visitante)).size}),V=ev.filter(e=>e.tipo=='visita'),now=Date.now(),dk=t=>new Date(t).toLocaleDateString('en-CA',{timeZone:'America/Santiago'});
+ const top=tp=>{const m={};ev.filter(e=>tp.includes(e.tipo)).forEach(e=>m[e.producto_id]=(m[e.producto_id]||0)+(e.tipo=='unlike'?-1:1));return Object.entries(m).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([id,n])=>({producto_id:+id,n}))};
+ const dm={};V.forEach(e=>{const k=dk(e.t);(dm[k]=dm[k]||[]).push(e)});
+ return{hoy:f(V.filter(e=>dk(e.t)==dk(now))),sem:f(V.filter(e=>now-e.t<7*864e5)),mes:f(V.filter(e=>now-e.t<30*864e5)),total:f(V),dias:Object.entries(dm).map(([dia,a])=>({dia,...f(a)})),carrito:top(['carrito']),likes:top(['like','unlike']),vistas:top(['vista'])}}
 function toggleFav(id){
  if(fav.has(id)){fav.delete(id);sel.delete(id);evento('unlike',id);if(!demo&&user)sb.from('favoritos').delete().match({user_id:user.id,producto_id:id}).then(()=>{})}
  else{fav.add(id);evento('like',id);toast('Guardado en favoritos 🤍');if(!demo&&user)sb.from('favoritos').upsert({user_id:user.id,producto_id:id}).then(()=>{})}
@@ -352,10 +363,16 @@ $('#bFavAdd').onclick=()=>{const L=prods.filter(p=>sel.has(p.id)&&fav.has(p.id))
  const ok=L.filter(p=>!p.tallas.length);if(!ok.length)return toast('Elige la talla en el producto para agregarlo');
  ok.forEach(p=>{cart[p.id]=(cart[p.id]||0)+1;evento('carrito',p.id)});guardarCarro();closeAll();open('#oCarro');if(ok.length<L.length)setTimeout(()=>toast('Algunos necesitan talla: agrégalos desde el producto'),400)};
 $('#bExit').onclick=()=>{adminOn=false;render()};
-$('#bStats').onclick=async()=>{let ev;if(demo)ev=J('ev',[]);else{const{data}=await sb.from('eventos').select('tipo,producto_id').limit(10000);ev=data||[]}
- const c={},l={};ev.forEach(e=>{const k=e.producto_id;if(e.tipo=='carrito')c[k]=(c[k]||0)+1;if(e.tipo=='like')l[k]=(l[k]||0)+1;if(e.tipo=='unlike')l[k]=(l[k]||0)-1});
- const top=m=>Object.entries(m).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([id,n])=>{const p=prods.find(x=>x.id==id);return p?`<div class="it"><img src="${esc((p.fotos||[])[0]||'logo.png')}" alt=""><div>${esc(p.titulo)}</div><b>${n}</b></div>`:''}).join('')||'<p class="vacio">Aún no hay datos</p>';
- $('#stC').innerHTML=top(c);$('#stL').innerHTML=top(l);open('#oStats')};
+$('#bStats').onclick=async()=>{let d;
+ if(demo)d=statsLocal(J('ev',[]));
+ else{const{data,error}=await sb.rpc('estadisticas');if(error||!data){$('#stV').innerHTML='<p class="vacio">No se pudieron cargar las estadísticas. Falta ejecutar el SQL de estadísticas en Supabase.</p>';$('#stP').innerHTML=$('#stC').innerHTML=$('#stL').innerHTML='';open('#oStats');return}d=data}
+ const k=(t,x)=>`<div class="kpi"><small>${t}</small><b>${x.visitas}</b><small>${x.unicos} ${x.unicos==1?'persona distinta':'personas distintas'}</small></div>`;
+ const dm=Object.fromEntries((d.dias||[]).map(x=>[x.dia,x])),dias=[];
+ for(let i=13;i>=0;i--){const key=new Date(Date.now()-i*864e5).toLocaleDateString('en-CA',{timeZone:'America/Santiago'});dias.push({key,n:dm[key]?.visitas||0})}
+ const mx=Math.max(1,...dias.map(x=>x.n));
+ $('#stV').innerHTML=`<div class="kpis">${k('Hoy',d.hoy)}${k('Últimos 7 días',d.sem)}${k('Últimos 30 días',d.mes)}${k('Total',d.total)}</div><h3>Últimos 14 días</h3><div class="bars">${dias.map(x=>`<div class="bc" title="${x.key}: ${x.n}"><i style="height:${Math.round(x.n/mx*100)}%"></i><small>${x.key.slice(8)}</small></div>`).join('')}</div><p class="stn">Una visita es una persona que abre la página (se cuenta una vez por sesión). «Personas distintas» cuenta cada celular o computador una sola vez. Los aparatos donde entraste al modo admin no se cuentan.</p>`;
+ const top=a=>(a||[]).map(({producto_id:id,n})=>{const p=prods.find(x=>x.id==id);return p?`<div class="it"><img src="${esc((p.fotos||[])[0]||'logo.png')}" alt=""><div>${esc(p.titulo)}</div><b>${n}</b></div>`:''}).join('')||'<p class="vacio">Aún no hay datos</p>';
+ $('#stP').innerHTML=top(d.vistas);$('#stC').innerHTML=top(d.carrito);$('#stL').innerHTML=top(d.likes);open('#oStats')};
 
 /* ---- ficha de producto ---- */
 const TITLE0=document.title,HEART='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-8-5-9.500-10C1.500 7.500 3.800 4.800 6.800 4.800c2 0 3.700 1 5.200 3 1.500-2 3.200-3 5.200-3 3 0 5.300 2.700 4.300 6.200C20 16 12 21 12 21z"/></svg>';
@@ -368,6 +385,7 @@ function addCart(id){const pr=prods.find(x=>x.id==id),ct=pr.tallas.length;if(ct&
  const k=ct?id+'|'+tsel[id]:String(id);cart[k]=(cart[k]||0)+1;evento('carrito',id);guardarCarro();toast('Agregado al carrito 🎀');return true}
 function abrirProd(id,click=true){const p=prods.find(x=>x.id==id);
  if(!p){toast('Este producto ya no está disponible');history.replaceState(null,'',location.pathname+location.search);return}
+ try{const kk='mt_pv'+id;if(!sessionStorage[kk]&&!localStorage.mt_noc){sessionStorage[kk]=1;evento('vista',id)}}catch(e){}
  pdId=id;pdIdx=0;if(click){pdPush=true;if(hashId()!==id)location.hash='producto-'+id}mostrarProd(p)}
 function mostrarProd(p){
  const fs=p.fotos||[],off=p.precio_antes>p.precio,ts=TALLAS.filter(t=>p.tallas.includes(t));
@@ -378,7 +396,7 @@ function mostrarProd(p){
  <div class="pdi"><div class="pdcats">${p.cats.map(c=>`<span>${esc(c)}</span>`).join('')}</div>
  <h1>${esc(p.titulo)}</h1>
  <div class="pdp">${clp(p.precio)}${off?`<s>${clp(p.precio_antes)}</s><span class="pdoff">-${Math.round(100-p.precio*100/p.precio_antes)}%</span>`:''}</div>
- <p class="pdenv">🚚 Envío a todo Chile por BlueExpress: ${clp(CFG.ENVIO)}</p>
+ <p class="pdenv">🚚 Envío a todo Chile con BlueExpress: ${clp(CFG.ENVIO)}</p>
  ${(p.etiquetas||[]).length?`<div class="pdtg">${p.etiquetas.map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}
  ${p.descripcion?`<p class="pdd">${esc(p.descripcion)}</p>`:''}
  ${ts.length?`<div class="tlw"><small>Tallas disponibles${ts.some(t=>TCAL.includes(t))?' (EUR)':''}</small><div class="tl">${ts.map(t=>`<button class="${tsel[p.id]==t?'on':''}" data-tl="${esc(t)}" data-pid="${p.id}" aria-pressed="${tsel[p.id]==t}">${esc(t)}</button>`).join('')}</div></div>`:''}
@@ -440,7 +458,7 @@ function initGoogle(){if(demo||!CFG.GCLIENT||!window.google||window.gInit)return
  google.accounts.id.initialize({client_id:CFG.GCLIENT,callback:async x=>{const{error}=await sb.auth.signInWithIdToken({provider:'google',token:x.credential});if(error)$('#aMsg').textContent='No se pudo conectar con Google.';else closeAll()}});
  google.accounts.id.renderButton($('#gbtn'),{theme:'outline',size:'large',shape:'pill',text:'continue_with',locale:'es',width:260});$('#bGoogle').hidden=true}
 addEventListener('load',initGoogle);
-$('#bAdm').onclick=()=>{adminOn=!adminOn;closeAll();render()};
+$('#bAdm').onclick=()=>{adminOn=!adminOn;if(adminOn)try{localStorage.mt_noc='1'}catch(e){}closeAll();render()};
 $('#bGoogle').onclick=async()=>{if(demo){user={email:CFG.ADMIN};localStorage.u=CFG.ADMIN;closeAll();render();return}
  const{error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error)$('#aMsg').textContent='No se pudo conectar con Google.'};
 async function auth(reg){const email=$('#em').value.trim(),password=$('#pw').value;const m=$('#aMsg');
@@ -499,5 +517,5 @@ $('#bPub').onclick=async()=>{const m=$('#pMsg'),t=$('#aT').value.trim(),pr=parse
  const pa=parseInt($('#aPA').value)||null;if(pa&&pa<=pr)return m.textContent='El precio anterior debe ser mayor que el precio actual.';
  try{const needPos=!ed||ed.seccion!==aSec,pos=needPos?await nuevoPos(aSec,ed?'final':aPos):0;await guardar({...(ed?{id:ed.id}:{}),titulo:t,precio:pr,descripcion:$('#aD').value.trim(),seccion:aSec,fotos,precio_antes:pa,etiquetas:aEtq,categorias:aCats,subcategorias:aSubs,tallas:TALLAS.filter(t=>aTal.includes(t)),...(needPos?{posicion:pos}:{})});
  closeAll();sec=aSec;toast(ed?'Cambios guardados ✨':'Publicado ✨');load()}catch(err){m.textContent='No se pudo guardar. Revisa tu conexión.'}};
-load();
+load();visitar();
 </script></body></html>
